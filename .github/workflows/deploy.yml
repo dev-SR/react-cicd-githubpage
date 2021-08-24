@@ -1,0 +1,38 @@
+name: Node CI
+
+on: [push, pull_request]
+
+jobs:
+   build-node:
+      runs-on: ubuntu-latest
+
+      steps:
+         - uses: actions/checkout@v1
+         - name: Use Node.js 15.x
+           uses: actions/setup-node@v1
+           with:
+              node-version: 15.x
+         - name: Get npm cache directory
+           id: npm-cache
+           run: |
+              echo "::set-output name=dir::$(npm config get cache)"
+         - uses: actions/cache@v1
+           with:
+              path: ${{ steps.npm-cache.outputs.dir }}
+              key: ${{ runner.os }}-node-${{ hashFiles('**/yarn.lock') }}
+              restore-keys: |
+                 ${{ runner.os }}-node-
+         - name: npm install, build
+           run: |
+              yarn install --frozen-lockfile
+              yarn run build
+           env:
+              HTTPS: 'true'
+              VITE_BASE_URL: ${{ secrets.VITE_BASE_URL }}
+              PUBLIC_URL: ${{ secrets.PUBLIC_URL }}
+
+         - name: Deploy to GitHub Pages
+           uses: peaceiris/actions-gh-pages@v3
+           with:
+              github_token: ${{ secrets.GITHUB_TOKEN }}
+              publish_dir: ./dist
